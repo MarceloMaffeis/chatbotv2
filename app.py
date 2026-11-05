@@ -12,51 +12,76 @@ st.set_page_config(
 )
 
 # ============================================================
-# CSS: ESTILIZAÇÃO DO WIDGET FLUTUANTE (POP-UP) ESTILO WHATSAPP
+# CSS: FIXAÇÃO E ESTILIZAÇÃO DO BOTÃO FLUTUANTE DO WHATSAPP
 # ============================================================
 st.markdown("""
 <style>
-    /* 1. Posiciona o container do popover fixo no canto inferior direito */
-    div[data-testid="stPopover"] {
+    /* 1. Posicionamento fixo no canto inferior direito da tela */
+    [data-testid="stPopover"] {
         position: fixed !important;
-        bottom: 24px !important;
-        right: 28px !important;
-        z-index: 999999 !important;
+        bottom: 30px !important;
+        right: 30px !important;
+        z-index: 9999999 !important;
+        width: auto !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
 
-    /* 2. Estiliza o botão flutuante de abertura (botão redondo verde WhatsApp) */
-    div[data-testid="stPopover"] > button {
+    /* 2. Formato redondo, verde e com sombra do botão */
+    [data-testid="stPopover"] > button {
         background-color: #25d366 !important;
         color: white !important;
         border-radius: 50% !important;
-        width: 62px !important;
-        height: 62px !important;
+        width: 64px !important;
+        height: 64px !important;
+        min-width: 64px !important;
+        min-height: 64px !important;
         border: none !important;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
-        font-size: 28px !important;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4) !important;
+        cursor: pointer !important;
+        padding: 0 !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        transition: transform 0.2s ease, background-color 0.2s ease !important;
-    }
-    div[data-testid="stPopover"] > button:hover {
-        background-color: #20ba5a !important;
-        transform: scale(1.08) !important;
+        transition: transform 0.25s ease, background-color 0.25s ease !important;
     }
 
-    /* 3. Estiliza a caixa/janela suspensa (Pop-up) */
-    div[data-testid="stPopoverBody"] {
+    /* Efeito hover (zoom leve ao passar o mouse) */
+    [data-testid="stPopover"] > button:hover {
+        background-color: #20ba5a !important;
+        transform: scale(1.1) !important;
+    }
+
+    /* 3. Aumenta o tamanho do ícone */
+    [data-testid="stPopover"] > button p {
+        font-size: 30px !important;
+        line-height: 1 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* 4. Remove a setinha para baixo nativa do Streamlit */
+    [data-testid="stPopover"] > button svg {
+        display: none !important;
+    }
+
+    /* 5. Janela suspensa (Pop-up do Chat) */
+    [data-testid="stPopoverBody"] {
         width: 390px !important;
-        max-width: 90vw !important;
-        max-height: 600px !important;
+        max-width: 88vw !important;
+        max-height: 580px !important;
         background-color: #0b141a !important;
         border: 1px solid #2a3942 !important;
         border-radius: 14px !important;
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5) !important;
+        box-shadow: 0 10px 35px rgba(0, 0, 0, 0.55) !important;
         padding: 12px !important;
+        position: fixed !important;
+        bottom: 105px !important;
+        right: 30px !important;
     }
 
-    /* 4. Cabeçalho do contato dentro do pop-up */
+    /* Cabeçalho do contato */
     .wa-popup-header {
         background-color: #202c33;
         color: #e9edef;
@@ -76,9 +101,9 @@ st.markdown("""
         display: inline-block;
     }
 
-    /* 5. Área de rolagem das mensagens */
+    /* Área de rolagem das mensagens */
     .whatsapp-scroll-area {
-        max-height: 320px;
+        max-height: 300px;
         overflow-y: auto;
         display: flex;
         flex-direction: column;
@@ -89,7 +114,7 @@ st.markdown("""
         margin-bottom: 12px;
     }
 
-    /* 6. Linhas e balões de conversa */
+    /* Balões de conversa */
     .msg-row {
         display: flex;
         width: 100%;

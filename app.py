@@ -6,52 +6,90 @@ from pypdf import PdfReader
 from openai import AzureOpenAI
 
 st.set_page_config(
-    page_title="TI Support Hub | Dashboard & WhatsApp Chat",
-    page_icon="💬",
+    page_title="TI Support Hub | Dashboard & Chat Flutuante",
+    page_icon="🛠️",
     layout="wide"
 )
 
-# ==========================================
-# CSS PERSONALIZADO: ESTILO WHATSAPP
-# ==========================================
+# ============================================================
+# CSS: ESTILIZAÇÃO DO WIDGET FLUTUANTE (POP-UP) ESTILO WHATSAPP
+# ============================================================
 st.markdown("""
 <style>
-    /* Fundo da área do WhatsApp */
-    .whatsapp-container {
-        background-color: #0b141a;
-        background-image: radial-gradient(#1f2c34 1px, transparent 1px);
-        background-size: 20px 20px;
-        border-radius: 12px;
-        padding: 20px;
-        max-height: 580px;
-        overflow-y: auto;
-        border: 1px solid #222d34;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        margin-bottom: 15px;
+    /* 1. Posiciona o container do popover fixo no canto inferior direito */
+    div[data-testid="stPopover"] {
+        position: fixed !important;
+        bottom: 24px !important;
+        right: 28px !important;
+        z-index: 999999 !important;
     }
 
-    /* Cabeçalho do contato */
-    .whatsapp-header {
+    /* 2. Estiliza o botão flutuante de abertura (botão redondo verde WhatsApp) */
+    div[data-testid="stPopover"] > button {
+        background-color: #25d366 !important;
+        color: white !important;
+        border-radius: 50% !important;
+        width: 62px !important;
+        height: 62px !important;
+        border: none !important;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
+        font-size: 28px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        transition: transform 0.2s ease, background-color 0.2s ease !important;
+    }
+    div[data-testid="stPopover"] > button:hover {
+        background-color: #20ba5a !important;
+        transform: scale(1.08) !important;
+    }
+
+    /* 3. Estiliza a caixa/janela suspensa (Pop-up) */
+    div[data-testid="stPopoverBody"] {
+        width: 390px !important;
+        max-width: 90vw !important;
+        max-height: 600px !important;
+        background-color: #0b141a !important;
+        border: 1px solid #2a3942 !important;
+        border-radius: 14px !important;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5) !important;
+        padding: 12px !important;
+    }
+
+    /* 4. Cabeçalho do contato dentro do pop-up */
+    .wa-popup-header {
         background-color: #202c33;
         color: #e9edef;
-        padding: 10px 16px;
-        border-radius: 10px 10px 0 0;
+        padding: 10px 14px;
+        border-radius: 8px 8px 4px 4px;
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
+        margin-bottom: 10px;
         border-bottom: 1px solid #313d45;
     }
     .status-dot {
-        height: 10px;
-        width: 10px;
+        height: 8px;
+        width: 8px;
         background-color: #25d366;
         border-radius: 50%;
         display: inline-block;
     }
 
-    /* Linhas de mensagem */
+    /* 5. Área de rolagem das mensagens */
+    .whatsapp-scroll-area {
+        max-height: 320px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 6px;
+        background-color: #0b141a;
+        border-radius: 6px;
+        margin-bottom: 12px;
+    }
+
+    /* 6. Linhas e balões de conversa */
     .msg-row {
         display: flex;
         width: 100%;
@@ -63,43 +101,35 @@ st.markdown("""
         justify-content: flex-start;
     }
 
-    /* Balões de fala */
     .chat-bubble {
-        max-width: 75%;
-        padding: 9px 14px 6px 14px;
+        max-width: 84%;
+        padding: 7px 11px 4px 11px;
         border-radius: 8px;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        font-size: 14.5px;
-        line-height: 1.45;
-        box-shadow: 0 1px 0.5px rgba(11,20,26,.13);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-size: 13.5px;
+        line-height: 1.4;
         word-wrap: break-word;
-        position: relative;
     }
-
-    /* Balão do usuário (Verde WhatsApp) */
     .chat-bubble.user {
         background-color: #005c4b;
         color: #e9edef;
         border-top-right-radius: 2px;
     }
-
-    /* Balão da IA (Cinza chumbo WhatsApp Web Dark) */
     .chat-bubble.assistant {
         background-color: #202c33;
         color: #d1d7db;
         border-top-left-radius: 2px;
     }
 
-    /* Metadados: hora e checks */
     .msg-meta {
-        font-size: 11px;
+        font-size: 10px;
         color: rgba(233, 237, 239, 0.6);
         text-align: right;
-        margin-top: 4px;
+        margin-top: 3px;
         display: flex;
         justify-content: flex-end;
         align-items: center;
-        gap: 4px;
+        gap: 3px;
     }
     .check-read {
         color: #53bdeb;
@@ -108,9 +138,9 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ==========================================
-# INICIALIZAÇÃO DE ESTADO
-# ==========================================
+# ============================================================
+# INICIALIZAÇÃO DE ESTADO (SESSION STATE)
+# ============================================================
 if "chat_iniciado" not in st.session_state:
     st.session_state.chat_iniciado = False
 if "messages" not in st.session_state:
@@ -144,12 +174,12 @@ def extrair_texto_e_dados(uploaded_file):
         return ""
     return ""
 
-# ==========================================
-# BARRA LATERAL (SIDEBAR)
-# ==========================================
+# ============================================================
+# BARRA LATERAL: PARÂMETROS AZURE & UPLOAD RAG
+# ============================================================
 with st.sidebar:
     st.title("⚙️ Conexão & RAG")
-    
+
     endpoint = st.text_input(
         "Endpoint Azure:",
         value=st.session_state.get("saved_endpoint", ""),
@@ -168,14 +198,14 @@ with st.sidebar:
     st.divider()
 
     persona_padrao = (
-        "Você é o Suporte de TI oficial da empresa via WhatsApp. "
-        "Responda de forma ágil, clara, cordial e profissional. "
-        "Consulte sempre a base de dados anexada para passar orçamentos, procedimentos e SLAs."
+        "Você é o assistente de Suporte de TI oficial via WhatsApp. "
+        "Responda de forma ágil, clara e cordial. Consulte sempre a base anexada "
+        "para orçamentos, procedimentos e SLAs."
     )
-    persona = st.text_area("Persona da IA:", value=persona_padrao, height=100)
+    persona = st.text_area("Persona da IA:", value=persona_padrao, height=90)
 
     arquivo_rag = st.file_uploader(
-        "Upload de Base (CSV para Dashboard + Chat):",
+        "Upload da Base (CSV para Dashboard + Chat):",
         type=["csv", "pdf", "txt"]
     )
 
@@ -186,7 +216,7 @@ with st.sidebar:
         st.session_state.conteudo_base = ""
         st.session_state.df_tabela = None
 
-    if st.button("🚀 Iniciar / Atualizar Conexão", use_container_width=True, type="primary"):
+    if st.button("🚀 Conectar IA", use_container_width=True, type="primary"):
         if not endpoint or not api_key or not modelo:
             st.error("Preencha Endpoint, API Key e Modelo.")
         else:
@@ -198,100 +228,93 @@ with st.sidebar:
             st.rerun()
 
     if st.session_state.chat_iniciado:
-        if st.button("🔄 Novo Chat (Limpar Conversa)", use_container_width=True):
+        if st.button("🔄 Novo Chat", use_container_width=True):
             st.session_state.messages = []
             st.rerun()
 
-# ==========================================
-# NAVEGAÇÃO PRINCIPAL (TABS)
-# ==========================================
-aba_dash, aba_chat = st.tabs(["📊 Dashboard de Manutenção", "💬 Atendimento WhatsApp"])
+# ============================================================
+# TELA PRINCIPAL: DASHBOARD ANALÍTICO COMPLETO
+# ============================================================
+st.subheader("📊 Painel Analítico de Manutenção e Serviços de TI")
 
-# ------------------------------------------
-# ABA 1: DASHBOARD ANALÍTICO
-# ------------------------------------------
-with aba_dash:
-    if st.session_state.df_tabela is not None:
-        df = st.session_state.df_tabela.copy()
+if st.session_state.df_tabela is not None:
+    df = st.session_state.df_tabela.copy()
 
-        # Limpeza e conversão numérica das colunas de valores (se necessário)
-        colunas_valor = ["Valor_Mao_de_Obra_BRL", "Custo_Pecas_Estimado_BRL", "Valor_Total_Sugerido_BRL"]
-        for col in colunas_valor:
-            if col in df.columns and df[col].dtype == object:
-                df[col] = df[col].astype(str).str.replace("R$", "", regex=False).str.strip().str.replace(",", ".").astype(float)
+    # Tratamento de colunas numéricas
+    colunas_valor = ["Valor_Mao_de_Obra_BRL", "Custo_Pecas_Estimado_BRL", "Valor_Total_Sugerido_BRL"]
+    for col in colunas_valor:
+        if col in df.columns and df[col].dtype == object:
+            df[col] = df[col].astype(str).str.replace("R$", "", regex=False).str.strip().str.replace(",", ".").astype(float)
 
-        st.subheader("Indicadores Gerais de Manutenção e Custos")
+    # Indicadores KPI
+    k1, k2, k3, k4 = st.columns(4)
+    total_servicos = len(df)
+    ticket_medio = df["Valor_Total_Sugerido_BRL"].mean() if "Valor_Total_Sugerido_BRL" in df.columns else 0
+    sla_medio = df["SLA_Horas"].mean() if "SLA_Horas" in df.columns else 0
+    remotos = len(df[df["Tipo_Atendimento"].str.contains("Remoto|Online", case=False, na=False)]) if "Tipo_Atendimento" in df.columns else 0
 
-        # Métricas KPI em cartões
-        kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-        total_servicos = len(df)
-        ticket_medio = df["Valor_Total_Sugerido_BRL"].mean() if "Valor_Total_Sugerido_BRL" in df.columns else 0
-        sla_medio = df["SLA_Horas"].mean() if "SLA_Horas" in df.columns else 0
-        remotos = len(df[df["Tipo_Atendimento"].str.contains("Remoto|Online", case=False, na=False)]) if "Tipo_Atendimento" in df.columns else 0
+    k1.metric("Total de Serviços", f"{total_servicos} itens")
+    k2.metric("Ticket Médio", f"R$ {ticket_medio:.2f}")
+    k3.metric("SLA Médio", f"{sla_medio:.1f} h")
+    k4.metric("Atendimentos Remotos", f"{remotos} itens")
 
-        kpi1.metric("Catálogo de Serviços", f"{total_servicos} itens")
-        kpi2.metric("Ticket Médio Sugerido", f"R$ {ticket_medio:.2f}")
-        kpi3.metric("SLA Médio de Atendimento", f"{sla_medio:.1f} horas")
-        kpi4.metric("Atendimentos Remotos", f"{remotos} itens")
+    st.divider()
 
-        st.divider()
+    # Gráficos
+    g1, g2 = st.columns(2)
+    with g1:
+        if "Codigo_Servico" in df.columns and "Valor_Total_Sugerido_BRL" in df.columns:
+            fig_bar = px.bar(
+                df,
+                x="Codigo_Servico",
+                y="Valor_Total_Sugerido_BRL",
+                color="Categoria" if "Categoria" in df.columns else None,
+                hover_data=["Descricao_Servico", "Tipo_Atendimento"],
+                title="Custo Total por Código de Serviço (R$)",
+                template="plotly_dark"
+            )
+            fig_bar.update_layout(xaxis_tickangle=-45)
+            st.plotly_chart(fig_bar, use_container_width=True)
 
-        # Gráficos Analíticos
-        g1, g2 = st.columns(2)
+    with g2:
+        if "Tipo_Atendimento" in df.columns:
+            fig_pie = px.pie(
+                df,
+                names="Tipo_Atendimento",
+                values="Valor_Total_Sugerido_BRL" if "Valor_Total_Sugerido_BRL" in df.columns else None,
+                title="Distribuição de Valores por Tipo de Atendimento",
+                hole=0.45,
+                template="plotly_dark"
+            )
+            st.plotly_chart(fig_pie, use_container_width=True)
 
-        with g1:
-            if "Categoria" in df.columns and "Valor_Total_Sugerido_BRL" in df.columns:
-                fig_cat = px.bar(
-                    df,
-                    x="Codigo_Servico",
-                    y="Valor_Total_Sugerido_BRL",
-                    color="Categoria",
-                    hover_data=["Descricao_Servico", "Tipo_Atendimento"],
-                    title="Custo Total por Serviço (Hardware vs Software)",
-                    labels={"Valor_Total_Sugerido_BRL": "Valor Total (R$)", "Codigo_Servico": "Código"},
-                    template="plotly_dark"
-                )
-                fig_cat.update_layout(xaxis_tickangle=-45)
-                st.plotly_chart(fig_cat, use_container_width=True)
+    with st.expander("🔍 Visualizar Base de Dados Completa (CSV)"):
+        st.dataframe(df, use_container_width=True)
 
-        with g2:
-            if "Tipo_Atendimento" in df.columns:
-                fig_pie = px.pie(
-                    df,
-                    names="Tipo_Atendimento",
-                    values="Valor_Total_Sugerido_BRL" if "Valor_Total_Sugerido_BRL" in df.columns else None,
-                    title="Distribuição da Receita por Tipo de Atendimento",
-                    hole=0.45,
-                    template="plotly_dark",
-                    color_discrete_sequence=px.colors.qualitative.Pastel
-                )
-                st.plotly_chart(fig_pie, use_container_width=True)
+else:
+    st.info("👈 Faça o upload de um arquivo **.CSV** na barra lateral para carregar automaticamente os indicadores, KPIs e gráficos.")
 
-        with st.expander("🔍 Visualizar Tabela Completa do Arquivo CSV"):
-            st.dataframe(df, use_container_width=True)
-    else:
-        st.info("💡 Faça o upload de um arquivo **.CSV** na barra lateral para habilitar os gráficos e indicadores.")
 
-# ------------------------------------------
-# ABA 2: CHATBOT ESTILO WHATSAPP
-# ------------------------------------------
-with aba_chat:
-    # Cabeçalho da conversa
+# ============================================================
+# WIDGET POP-UP FLUTUANTE (ESTILO E-COMMERCE / WHATSAPP)
+# ============================================================
+# O st.popover cria o botão flutuante e a janela retrátil
+with st.popover("💬", help="Abrir chat de Suporte de TI"):
+    # Cabeçalho da janelinha
     st.markdown("""
-    <div class="whatsapp-header">
-        <div style="font-size: 26px;">🎧</div>
+    <div class="wa-popup-header">
+        <div style="font-size: 22px;">🎧</div>
         <div style="flex-grow: 1;">
-            <div style="font-weight: 600; font-size: 15px;">Suporte Técnico TI - HelpDesk</div>
-            <div style="font-size: 12px; color: #8696a0;"><span class="status-dot"></span> online</div>
+            <div style="font-weight: 600; font-size: 14px;">Suporte de TI Online</div>
+            <div style="font-size: 11px; color: #8696a0;"><span class="status-dot"></span> online agora</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-# Renderização da Janela de Mensagens do WhatsApp
-    html_chat = '<div class="whatsapp-container">'
-    
+    # Área de histórico das mensagens
+    html_chat = '<div class="whatsapp-scroll-area">'
     if len(st.session_state.messages) == 0:
-        html_chat += '<div style="text-align: center; color: #8696a0; font-size: 12px; margin: auto;">🔒 As mensagens são protegidas com RAG corporativo e modelo Azure OpenAI.</div>'
+        html_chat += '<div style="text-align: center; color: #8696a0; font-size: 11px; margin: auto; padding: 10px 0;">🔒 Suporte automatizado com RAG corporativo. Como podemos ajudar?</div>'
     else:
         for m in st.session_state.messages:
             papel = m["role"]
@@ -299,7 +322,6 @@ with aba_chat:
             hora = m.get("time", datetime.now().strftime("%H:%M"))
             checks = '<span class="check-read">✓✓</span>' if papel == "user" else ''
 
-            # IMPORTANTE: Manter as tags sem espaços/tabs no início da linha para evitar bloco de código
             html_chat += (
                 f'<div class="msg-row {papel}">'
                 f'<div class="chat-bubble {papel}">'
@@ -308,53 +330,55 @@ with aba_chat:
                 f'</div>'
                 f'</div>'
             )
-
     html_chat += '</div>'
     st.markdown(html_chat, unsafe_allow_html=True)
 
-    # Input do Usuário
+    # Formulário de Envio dentro do Pop-up
     if not st.session_state.chat_iniciado:
-        st.warning("⚠️ Conecte suas credenciais na barra lateral à esquerda para habilitar o envio.")
+        st.caption("⚠️ Conecte suas credenciais na barra lateral para habilitar o envio.")
     else:
-        if prompt := st.chat_input("Digite uma mensagem como no WhatsApp..."):
-            hora_atual = datetime.now().strftime("%H:%M")
-            st.session_state.messages.append({"role": "user", "content": prompt, "time": hora_atual})
+        with st.form(key="popup_chat_form", clear_on_submit=True):
+            user_msg = st.text_input("Mensagem:", placeholder="Digite sua dúvida ou código de erro...", label_visibility="collapsed")
+            enviar = st.form_submit_button("Enviar 📤", use_container_width=True)
 
-            # Montagem do prompt com RAG
-            instrucao = st.session_state.persona
-            if st.session_state.conteudo_base:
-                instrucao += f"\n\n[BASE DE CONHECIMENTO CSV/RAG]:\n{st.session_state.conteudo_base}"
+            if enviar and user_msg.strip():
+                hora_envio = datetime.now().strftime("%H:%M")
+                st.session_state.messages.append({"role": "user", "content": user_msg, "time": hora_envio})
 
-            mensagens_envio = [{"role": "system", "content": instrucao}]
-            for m in st.session_state.messages:
-                mensagens_envio.append({"role": m["role"], "content": m["content"]})
+                # Montagem do prompt com RAG
+                system_instruction = st.session_state.persona
+                if st.session_state.conteudo_base:
+                    system_instruction += f"\n\n[BASE RAG / CATÁLOGO]:\n{st.session_state.conteudo_base}"
 
-            try:
-                endpoint_sanitizado = (
-                    st.session_state.saved_endpoint.strip()
-                    .replace("/openai/v1", "")
-                    .rstrip("/")
-                )
+                mensagens_api = [{"role": "system", "content": system_instruction}]
+                for m in st.session_state.messages:
+                    mensagens_api.append({"role": m["role"], "content": m["content"]})
 
-                client = AzureOpenAI(
-                    azure_endpoint=endpoint_sanitizado,
-                    api_key=st.session_state.saved_key.strip(),
-                    api_version="2024-06-01"
-                )
+                try:
+                    endpoint_limpo = (
+                        st.session_state.saved_endpoint.strip()
+                        .replace("/openai/v1", "")
+                        .rstrip("/")
+                    )
+                    client = AzureOpenAI(
+                        azure_endpoint=endpoint_limpo,
+                        api_key=st.session_state.saved_key.strip(),
+                        api_version="2024-06-01"
+                    )
+                    response = client.chat.completions.create(
+                        model=st.session_state.saved_model.strip(),
+                        messages=mensagens_api,
+                        temperature=0.2
+                    )
+                    resposta_ia = response.choices[0].message.content
 
-                resposta = client.chat.completions.create(
-                    model=st.session_state.saved_model.strip(),
-                    messages=mensagens_envio,
-                    temperature=0.2
-                )
-                conteudo_resposta = resposta.choices[0].message.content
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": resposta_ia,
+                        "time": datetime.now().strftime("%H:%M")
+                    })
+                    st.rerun()
 
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": conteudo_resposta,
-                    "time": datetime.now().strftime("%H:%M")
-                })
-                st.rerun()
-
-            except Exception as e:
+                except Exception as e:
+                    st.error(f"Erro na conexão com Azure: {e}")
                 st.error(f"Erro de conexão com o Azure OpenAI: {e}")

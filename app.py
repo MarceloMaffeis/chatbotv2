@@ -287,15 +287,11 @@ with aba_chat:
     </div>
     """, unsafe_allow_html=True)
 
-    # Renderização da Janela de Mensagens do WhatsApp
+# Renderização da Janela de Mensagens do WhatsApp
     html_chat = '<div class="whatsapp-container">'
     
     if len(st.session_state.messages) == 0:
-        html_chat += """
-        <div style="text-align: center; color: #8696a0; font-size: 12px; margin: auto;">
-            🔒 As mensagens são protegidas com RAG corporativo e modelo Azure OpenAI.
-        </div>
-        """
+        html_chat += '<div style="text-align: center; color: #8696a0; font-size: 12px; margin: auto;">🔒 As mensagens são protegidas com RAG corporativo e modelo Azure OpenAI.</div>'
     else:
         for m in st.session_state.messages:
             papel = m["role"]
@@ -303,14 +299,15 @@ with aba_chat:
             hora = m.get("time", datetime.now().strftime("%H:%M"))
             checks = '<span class="check-read">✓✓</span>' if papel == "user" else ''
 
-            html_chat += f"""
-            <div class="msg-row {papel}">
-                <div class="chat-bubble {papel}">
-                    <div>{conteudo}</div>
-                    <div class="msg-meta">{hora} {checks}</div>
-                </div>
-            </div>
-            """
+            # IMPORTANTE: Manter as tags sem espaços/tabs no início da linha para evitar bloco de código
+            html_chat += (
+                f'<div class="msg-row {papel}">'
+                f'<div class="chat-bubble {papel}">'
+                f'<div>{conteudo}</div>'
+                f'<div class="msg-meta">{hora} {checks}</div>'
+                f'</div>'
+                f'</div>'
+            )
 
     html_chat += '</div>'
     st.markdown(html_chat, unsafe_allow_html=True)
